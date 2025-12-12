@@ -1,5 +1,5 @@
 # @package _global_
 
-data_dir: /data/storage/tsoydan/data/eventdatasets # Point it to your own local eventdatasets folder
-output_dir: ./outputs/${now:%Y-%m-%d-%H-%M-%S}
-checkpoint_dir: ./checkpoints
+data_dir: /media/SSD0/haohq/S7/datasets/eventdatasets # Point it to your own local eventdatasets folder
+output_dir: /media/SSD0/haohq/S7/outputs/${now:%Y-%m-%d-%H-%M-%S}
+checkpoint_dir: /media/SSD0/haohq/S7/checkpoints

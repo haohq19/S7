@@ -15,6 +15,7 @@ from flax.training import checkpoints
 from flax import jax_utils
 from functools import partial
 
+from tqdm import tqdm
 
 @partial(jax.jit, static_argnums=(1,))
 def reshape_batch_per_device(x, num_devices):
@@ -193,7 +194,7 @@ class TrainerModule:
         # set up intra epoch logging
         log_interval = self.log_config.interval
 
-        for i, batch in enumerate(train_loader):
+        for i, batch in tqdm(enumerate(train_loader)):
             num_batches += 1
 
             # skip batches with empty sequences which might randomly occur due to data augmentation
@@ -283,7 +284,7 @@ class TrainerModule:
         """
         if len(old_metrics) == 0:
             return True
-        for key, is_larger in [('val/val_metric', False), ('Performance/Validation perplexity', False), ('Performance/Validation accuracy', True), ('Performance/Validation loss', False)]:
+        for key, is_larger in [('val/val_metric', False), ('Performance/Validation accuracy', True), ('Performance/Validation loss', False)]:
             if key in new_metrics:
                 if is_larger:
                     return new_metrics[key] > old_metrics[key]

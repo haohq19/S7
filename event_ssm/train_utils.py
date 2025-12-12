@@ -1,17 +1,19 @@
+import random
 import numpy as np
+from typing import Any, Dict
+from functools import partial
+
 import jax
 import jax.numpy as jnp
 from jaxtyping import Array
-from typing import Any, Dict
-import random
 from flax.training import train_state
 import optax
-from functools import partial
 
 
 class TrainState(train_state.TrainState):
     key: Array
     model_state: Dict
+
 
 def training_step(
         train_state: TrainState,
@@ -64,24 +66,24 @@ def training_step(
 
     if loss_type in {"cross_entropy", "one_hot_cross_entropy"}:
         accuracy = (preds == targets_class).mean()
-        perplexity = jnp.exp(loss)
+        # perplexity = jnp.exp(loss)
     elif loss_type == "mse":
         accuracy = -loss  
-        perplexity = None 
+        # perplexity = None 
 
     if distributed:
         grads = jax.lax.pmean(grads, axis_name='data')
         loss = jax.lax.pmean(loss, axis_name='data')
         accuracy = jax.lax.pmean(accuracy, axis_name='data')
-        if perplexity is not None:
-            perplexity = jax.lax.pmean(perplexity, axis_name='data')
+        # if perplexity is not None:
+        #     perplexity = jax.lax.pmean(perplexity, axis_name='data')
 
     train_state = train_state.apply_gradients(grads=grads)
     train_state = train_state.replace(model_state=batch_updates)
 
     metrics = {'loss': loss, 'accuracy': accuracy}
-    if perplexity is not None:
-        metrics['perplexity'] = perplexity
+    # if perplexity is not None:
+    #     metrics['perplexity'] = perplexity
 
     return train_state, metrics
 
@@ -129,20 +131,20 @@ def evaluation_step(
 
     if loss_type in {"cross_entropy", "one_hot_cross_entropy"}:
         accuracy = (preds == targets_class).mean()
-        perplexity = jnp.exp(loss)
+        # perplexity = jnp.exp(loss)
     elif loss_type == "mse":
         accuracy = -loss  
-        perplexity = None  
+        # perplexity = None  
 
     if distributed:
         loss = jax.lax.pmean(loss, axis_name='data')
         accuracy = jax.lax.pmean(accuracy, axis_name='data')
-        if perplexity is not None:
-            perplexity = jax.lax.pmean(perplexity, axis_name='data')
+        # if perplexity is not None:
+        #     perplexity = jax.lax.pmean(perplexity, axis_name='data')
 
     metrics = {'loss': loss, 'accuracy': accuracy}
-    if perplexity is not None:
-        metrics['perplexity'] = perplexity
+    # if perplexity is not None:
+    #     metrics['perplexity'] = perplexity
 
     return train_state, metrics
 
@@ -196,7 +198,7 @@ def map_nested_fn_with_keyword(keyword_1, keyword_2):
     return map_fn
 
 
-def seed_all(seed):
+def seed_everything(seed):
     random.seed(seed)
     np.random.seed(seed)
 

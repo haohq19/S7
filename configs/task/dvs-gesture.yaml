@@ -7,9 +7,9 @@ task:
 
 training:
   num_epochs: 100
-  per_device_batch_size: 16
-  per_device_eval_batch_size: 4
-  num_workers: 32
+  per_device_batch_size: 8
+  per_device_eval_batch_size: 1
+  num_workers: 4
   time_jitter: 5
   spatial_jitter: 0.3
   noise: 0.0
@@ -27,7 +27,7 @@ training:
   loss_type: cross_entropy
 
 optimizer:
-  ssm_base_lr: 0.000012
+  ssm_base_lr: 0.000001
   lr_factor: 6
   warmup_epochs: 10
   ssm_weight_decay: 0.0

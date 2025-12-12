@@ -133,6 +133,7 @@ def masked_meanpool(x, lengths):
     return np.sum(mask[..., None]*x, axis=0)/lengths
 
 
+## ??? What is the purpose of timepool ??? 
 def timepool(x, integration_timesteps):
     """
     Helper function to perform weighted mean across the sequence length.
@@ -299,7 +300,9 @@ BatchClassificationModel = nn.vmap(
     in_axes=(0, 0, 0, None),
     out_axes=0,
     variable_axes={"params": None, "dropout": None, 'batch_stats': None, "cache": 0, "prime": None},
-    split_rngs={"params": False, "dropout": True}, axis_name='batch')
+    split_rngs={"params": False, "dropout": True}, 
+    axis_name='batch'
+)
 
 ## Retrieval Model
 

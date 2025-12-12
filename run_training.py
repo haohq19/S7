@@ -5,6 +5,8 @@ from omegaconf import DictConfig, open_dict
 from functools import partial
 import os
 
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+
 import jax.random
 from flax import jax_utils
 from flax.training import checkpoints
@@ -12,10 +14,10 @@ from flax.training import checkpoints
 from event_ssm.dataloading import *
 from event_ssm.ssm import init_S5SSM
 from event_ssm.seq_model import *
-from event_ssm.train_utils import training_step, evaluation_step, init_model_state
+from event_ssm.train_utils import training_step, evaluation_step, init_model_state, seed_everything
 from event_ssm.trainer import TrainerModule
 
-import jax.numpy as np
+import jax.numpy as jnp
 
 
 def setup_training(key ,cfg: DictConfig):
@@ -116,9 +118,10 @@ def main(config: DictConfig):
     with open(os.path.join(config.logging.log_dir, 'config.yaml'), 'w') as f:
         om.save(config, f)
 
-    # Set the random seed manually for reproducibility.
+    # Set the random seed for reproducibility.
     key = jax.random.PRNGKey(config.seed)
     init_key, dropout_key = jax.random.split(key)
+    seed_everything(config.seed)
 
     if jax.local_device_count() > 1:
         dropout_key = jax.random.split(dropout_key, jax.local_device_count())

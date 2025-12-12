@@ -9,16 +9,15 @@ model:
     clip_eigs: true #true
     input_dependent: true # New
     stablessm_a: false # New
-    separate_dbc: none # New
     log_a: false # New
     bidirectional: false #true # New
   ssm:
     discretization: async
-    d_model: 16 # 32 128
-    d_ssm: 16 # 32 128
+    d_model: 64 # 16 # 32 128
+    d_ssm: 64 # 16 # 32 128
     ssm_block_size: 16
     num_stages: 2 #3 # 1 2
-    num_layers_per_stage: 3 #2 #3
+    num_layers_per_stage: 4 # 3 #2 #3
     dropout: 0.25 #0.25
     classification_mode: timepool
     prenorm: true

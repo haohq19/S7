@@ -92,14 +92,14 @@ class SequenceLayer(nn.Module):
         x = x * nn.sigmoid(x1)
         x = nn.Dropout(self.dropout, broadcast_dims=[0], deterministic=not train)(x)
 
-        if self.pooling_stride > 1:
-            pool = EventPooling(stride=self.pooling_stride, mode=self.pooling_mode)
-            skip, integration_timesteps = pool(skip, integration_timesteps)
-
         if self.d_model_in != self.d_model_out:
             skip = nn.Dense(self.d_model_out)(skip)
 
-        x = skip + x
+        x = x + skip
+
+        if self.pooling_stride > 1:
+            pool = EventPooling(stride=self.pooling_stride, mode=self.pooling_mode)
+            x, integration_timesteps = pool(x, integration_timesteps)
 
         if not self.prenorm:
             norm = nn.BatchNorm(momentum=self.bn_momentum, axis_name='batch') if self.batchnorm else nn.LayerNorm()

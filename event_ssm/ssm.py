@@ -12,6 +12,7 @@ from .layers import EventPooling
 import math
 from typing import Any, Callable, Sequence
 
+
 def discretize_zoh(Lambda, step_delta, time_delta):
     """
     Discretize a diagonalized, continuous-time linear SSM
@@ -43,6 +44,7 @@ def discretize_dirac(Lambda, step_delta, time_delta):
     Lambda_bar = np.exp(Lambda * Delta)
     gamma_bar = 1.0
     return Lambda_bar, gamma_bar
+
 
 def discretize_async(Lambda, step_delta, time_delta):
     """
@@ -76,7 +78,7 @@ def binary_operator(q_i, q_j):
     return A_j * A_i, A_j * b_i + b_j
 
 
-def apply_ssm(Lambda_elements, Bu_elements, C_tilde, conj_sym, stride=1, input_dependent=True, bidirectional=True):
+def apply_ssm(Lambda_elements, Bu_elements, C_tilde, conj_sym, bidirectional=False):
     """
     Compute the LxH output of discretized SSM given an LxH input.
 
@@ -86,7 +88,6 @@ def apply_ssm(Lambda_elements, Bu_elements, C_tilde, conj_sym, stride=1, input_d
     :param conj_sym: (bool) whether conjugate symmetry is enforced
     :return: ys: (float32) the SSM outputs (S5 layer preactivations) (L, H)
     """
-    remaining_timesteps = (Bu_elements.shape[0] // stride) * stride
 
     _, xs = jax.lax.associative_scan(binary_operator, (Lambda_elements, Bu_elements))
 
@@ -94,18 +95,11 @@ def apply_ssm(Lambda_elements, Bu_elements, C_tilde, conj_sym, stride=1, input_d
         _, xs2 = jax.lax.associative_scan(binary_operator,(Lambda_elements, Bu_elements),reverse=True)
         xs = np.concatenate((xs, xs2), axis=-1)
 
-    xs = xs[:remaining_timesteps:stride]
-
     if conj_sym:
-        if input_dependent:
-            return jax.vmap(lambda C_tilde, x: 2*(C_tilde @ x).real)(C_tilde, xs)
-        else:
-            return jax.vmap(lambda x: 2*(C_tilde @ x).real)(xs)
+        return jax.vmap(lambda x: 2*(C_tilde @ x).real)(xs)
     else:
-        if input_dependent:
-            return jax.vmap(lambda C_tilde, x: (C_tilde @ x).real)(C_tilde, xs)
-        else:
-            return jax.vmap(lambda x: (C_tilde @ x).real)(xs)
+        return jax.vmap(lambda x: (C_tilde @ x).real)(xs)
+    
                 
 def compute_inv_dt(key, features, dt_min, dt_max):
     # Generate random values
@@ -123,15 +117,18 @@ def compute_inv_dt(key, features, dt_min, dt_max):
 
     return inv_dt
 
+
 def weight_init(minval, maxval):
     def init(key, shape, dtype=np.float32):
         return jax.random.uniform(key, shape, dtype, minval, maxval)
     return init
 
+
 def bias_init(dt_min, dt_max):
     def init(key, shape, dtype=np.float32):
         return compute_inv_dt(key, shape[0], dt_min, dt_max)
     return init
+
 
 class SimpleDense(nn.Module):
     features: int
@@ -149,7 +146,8 @@ class SimpleDense(nn.Module):
         y = y + bias
         return y
 
-class S5SSM(nn.Module):
+
+class S7(nn.Module):
     H_in: int
     H_out: int
     P: int
@@ -166,7 +164,6 @@ class S5SSM(nn.Module):
     step_rescale: float = 1.0
     stride: int = 1
     pooling_mode: str = "last"
-    separate_dbc: bool = False
     input_dependent: bool = True
     a: float = 1.0
     b: float = 0.5
@@ -190,7 +187,6 @@ class S5SSM(nn.Module):
     :param log_a: bool, whether to learn state transition matrix A in log-space
     :param stablessm_a: bool, whether to apply a stable parameterization for A
     :param bidirectional: bool, whether to use a bidirectional SSM
-    :param separate_dbc: bool, whether to use separate linear layers for Delta, B, and C
     :param input_dependent: bool, whether the parameters B and C depend on the input
     :param a: float, scaling factor for stable parameterization of A
     :param b: float, offset for stable parameterization of A
@@ -206,7 +202,7 @@ class S5SSM(nn.Module):
             print("Unidirectional Model")
 
 
-        if self.input_dependent == True:
+        if self.input_dependent:
             print("Input dependent")
         else:
             print("LTI")
@@ -214,15 +210,9 @@ class S5SSM(nn.Module):
         if self.log_a == True:
             print("Learning A in log scale")
         elif self.stablessm_a == True:
-            print("Learning A with stablessm formula")
+            print("Learning A with StableSSM formula")
         else:
-            print("Not learning Learning A with log or stablessm formula")
-
-        if self.input_dependent:
-            if self.separate_dbc == True:
-                print("Separate Linear layers for Delta, B, C")
-            else:
-                print("Single Linear layer for Delta, B, C")
+            print("Not learning A with log or StableSSM formula")
 
         assert not (self.log_a and self.stablessm_a), "Both log_a and stablessm_a cannot be true at the same time."
     
@@ -230,7 +220,7 @@ class S5SSM(nn.Module):
 
         # Initialize state matrix A using approximation to HiPPO-LegS matrix
 
-        blocks = self.P // self.block_size
+        num_blocks = self.P // self.block_size
         block_size = self.block_size // 2 if self.conj_sym else self.block_size
         local_P = self.P // 2 if self.conj_sym else self.P
         self.local_P = local_P
@@ -240,11 +230,11 @@ class S5SSM(nn.Module):
 
         # If initializing state matrix A as block-diagonal, put HiPPO approximation
         # on each block
-        Lambda = (Lambda * np.ones((blocks, block_size))).ravel()
+        Lambda = (Lambda * np.ones((num_blocks, block_size))).ravel()
 
         
-        V = block_diag(*([V] * blocks))
-        Vinv = block_diag(*([Vc] * blocks))
+        V = block_diag(*([V] * num_blocks))
+        Vinv = block_diag(*([Vc] * num_blocks))
 
         state_str = f"SSM: {self.H_in} -> {self.P} -> {self.H_out}"
         if self.stride > 1:
@@ -269,75 +259,62 @@ class S5SSM(nn.Module):
         
         if self.input_dependent:  
             self.dt_rank = math.ceil(self.H_in/16)
-            if self.separate_dbc:
-                self.B_proj = nn.Dense(local_P * self.H_in * 2, name = "B_proj")
-                if self.bidirectional:
-                    self.C_proj = nn.Dense(2 * local_P * self.H_out * 2, name = "C_proj")
-
-                else:    
-                    self.C_proj = nn.Dense(local_P * self.H_out * 2, name = "C_proj")
-            else:
-                if self.bidirectional:
-                    self.x_proj = nn.Dense(self.dt_rank + local_P * 2 * self.H_in * 2 + local_P * self.H_out * 2, name = "x_proj")
-                else:
-                    self.x_proj = nn.Dense(self.dt_rank + local_P * self.H_in * 2 + local_P * self.H_out * 2, name = "x_proj")
             dt_init_std = self.dt_rank**-0.5 * self.step_rescale
-            
             key = jax.random.PRNGKey(0)
             kernel_initializer = weight_init(-dt_init_std,dt_init_std)
             bias_initializer = bias_init(self.dt_min, self.dt_max)
             self.step_proj = SimpleDense(features=local_P, 
                         kernel_init=kernel_initializer,
                         bias_init=bias_initializer, name = "step_proj")
+        
+        # Initialize input to state (B) matrix
+        B_init = lecun_normal()
+        B_shape = (self.P, self.H_in)
+        self.B = self.param("B",
+                            lambda rng, shape: init_VinvB(B_init, rng, shape, Vinv),
+                            B_shape)
+        # Initialize state to output (C) matrix
+        if self.C_init in ["trunc_standard_normal"]:
+            C_init = trunc_standard_normal
+            C_shape = (self.H_out, self.P, 2)
+        elif self.C_init in ["lecun_normal"]:
+            C_init = lecun_normal()
+            C_shape = (self.H_out, self.P, 2)
+        elif self.C_init in ["complex_normal"]:
+            C_init = normal(stddev=0.5 ** 0.5)
         else:
-            # Initialize input to state (B) matrix
-            B_init = lecun_normal()
-            B_shape = (self.P, self.H_in)
-            self.B = self.param("B",
-                                lambda rng, shape: init_VinvB(B_init, rng, shape, Vinv),
-                                B_shape)
-            # Initialize state to output (C) matrix
-            if self.C_init in ["trunc_standard_normal"]:
-                C_init = trunc_standard_normal
-                C_shape = (self.H_out, self.P, 2)
-            elif self.C_init in ["lecun_normal"]:
-                C_init = lecun_normal()
-                C_shape = (self.H_out, self.P, 2)
-            elif self.C_init in ["complex_normal"]:
-                C_init = normal(stddev=0.5 ** 0.5)
+            raise NotImplementedError(
+                "C_init method {} not implemented".format(self.C_init))
+        if self.C_init in ["complex_normal"]:
+            if self.bidirectional:
+                C = self.param("C", C_init, (self.H_out, 2 * local_P, 2))
+                self.C_tilde = C[..., 0] + 1j * C[..., 1]
+
             else:
-                raise NotImplementedError(
-                    "C_init method {} not implemented".format(self.C_init))
-            if self.C_init in ["complex_normal"]:
-                if self.bidirectional:
-                    C = self.param("C", C_init, (self.H_out, 2 * local_P, 2))
-                    self.C_tilde = C[..., 0] + 1j * C[..., 1]
+                C = self.param("C", C_init, (self.H_out, local_P, 2))
+                self.C_tilde = C[..., 0] + 1j * C[..., 1]
+        else:
+            if self.bidirectional:
+                self.C1 = self.param("C1",
+                                    lambda rng, shape: init_CV(C_init, rng, shape, V),
+                                    C_shape)
+                self.C2 = self.param("C2",
+                                    lambda rng, shape: init_CV(C_init, rng, shape, V),
+                                    C_shape)
 
-                else:
-                    C = self.param("C", C_init, (self.H_out, local_P, 2))
-                    self.C_tilde = C[..., 0] + 1j * C[..., 1]
+                C1 = self.C1[..., 0] + 1j * self.C1[..., 1]
+                C2 = self.C2[..., 0] + 1j * self.C2[..., 1]
+                self.C_tilde = np.concatenate((C1, C2), axis=-1)
+
             else:
-                if self.bidirectional:
-                    self.C1 = self.param("C1",
-                                        lambda rng, shape: init_CV(C_init, rng, shape, V),
-                                        C_shape)
-                    self.C2 = self.param("C2",
-                                        lambda rng, shape: init_CV(C_init, rng, shape, V),
-                                        C_shape)
+                self.C = self.param("C",
+                                    lambda rng, shape: init_CV(C_init, rng, shape, V),
+                                    C_shape)
+                self.C_tilde = self.C[..., 0] + 1j * self.C[..., 1]
 
-                    C1 = self.C1[..., 0] + 1j * self.C1[..., 1]
-                    C2 = self.C2[..., 0] + 1j * self.C2[..., 1]
-                    self.C_tilde = np.concatenate((C1, C2), axis=-1)
-
-                else:
-                    self.C = self.param("C",
-                                        lambda rng, shape: init_CV(C_init, rng, shape, V),
-                                        C_shape)
-                    self.C_tilde = self.C[..., 0] + 1j * self.C[..., 1]
-
-            self.log_step = self.param("log_step",
-                                init_log_steps,
-                                (local_P, self.dt_min, self.dt_max))
+        self.log_step = self.param("log_step",
+                            init_log_steps,
+                            (local_P, self.dt_min, self.dt_max))
 
 
         # Initialize feedthrough (D) matrix
@@ -375,45 +352,16 @@ class S5SSM(nn.Module):
        
 
         if self.input_dependent:
-            if self.separate_dbc:
-                B_projected = self.B_proj(input_sequence)
-                B_reshaped = B_projected.reshape(-1, self.local_P, self.H_in, 2)
-                if self.stride > 1:
-                    pooled_input_sequence, _ = self.pool(input_sequence, integration_timesteps)
-                else:
-                    pooled_input_sequence = input_sequence
-                C_projected = self.C_proj(pooled_input_sequence)
-                if self.bidirectional:
-                    C_reshaped = C_projected.reshape(-1, self.H_out, self.local_P * 2, 2)
-                else:
-                    C_reshaped = C_projected.reshape(-1, self.H_out, self.local_P, 2)
-                step = self.step_proj(input_sequence)
-            else:
-                x_dbl = self.x_proj(input_sequence)
-                step, B_projected, C_projected = np.split(x_dbl, indices_or_sections = [self.dt_rank,2*self.H_in*self.local_P+self.dt_rank],axis = -1)
-                step = self.step_proj(step)
-                B_reshaped = B_projected.reshape(-1, self.local_P, self.H_in, 2)
-                if self.stride > 1:
-                    remaining_timesteps = (len(integration_timesteps) // self.stride) * self.stride
-                    C_projected = C_projected[:remaining_timesteps:self.stride]
-                if self.bidirectional:
-                    C_reshaped = C_projected.reshape(-1, self.H_out, self.local_P * 2, 2)
-                else:
-                    C_reshaped = C_projected.reshape(-1, self.H_out, self.local_P, 2)
-                
+            step = self.step_proj(input_sequence)
             step = jax.nn.softplus(step)
-            B = B_reshaped[..., 0] + 1j * B_reshaped[..., 1]
-            C = C_reshaped[..., 0] + 1j * C_reshaped[..., 1]
-        else:
-            B = self.B[..., 0] + 1j * self.B[..., 1]
-            C = self.C_tilde
+        B = self.B[..., 0] + 1j * self.B[..., 1]
+        C = self.C_tilde
         
 
-        def discretize_and_project_inputs_input_dep(u, _timestep, B, log_step):
+        def discretize_and_project_inputs_input_dep(u, _timestep, log_step):
             step = self.step_rescale * log_step
             Lambda_bar, gamma_bar = self.discretize_fn(Lambda, step, _timestep)
             Bu = gamma_bar * (B @ u)
-           
             return Lambda_bar, Bu
         
         def discretize_and_project_inputs(u, _timestep):
@@ -423,29 +371,22 @@ class S5SSM(nn.Module):
             return Lambda_bar, Bu
 
         if self.input_dependent:
-            Lambda_bar_elements, Bu_bar_elements = jax.vmap(discretize_and_project_inputs_input_dep)(input_sequence, integration_timesteps, B, step)
+            Lambda_bar_elements, b = jax.vmap(discretize_and_project_inputs_input_dep)(input_sequence, integration_timesteps, step)
         else:
-            Lambda_bar_elements, Bu_bar_elements = jax.vmap(discretize_and_project_inputs)(input_sequence, integration_timesteps)
+            Lambda_bar_elements, b = jax.vmap(discretize_and_project_inputs)(input_sequence, integration_timesteps)
 
-        ys = apply_ssm(
+        y = apply_ssm(
             Lambda_bar_elements,
-            Bu_bar_elements,
+            b,
             C,
             self.conj_sym,
-            stride=self.stride,
-            input_dependent=self.input_dependent,
             bidirectional=self.bidirectional,
         )
-        
-        
-        if self.stride > 1:
-            input_sequence, _ = self.pool(input_sequence, integration_timesteps)
         if self.H_in == self.H_out:
             Du = jax.vmap(lambda u: self.D * u)(input_sequence)
         else:
             Du = jax.vmap(lambda u: self.D @ u)(input_sequence)
-      
-        return ys + Du 
+        return y + Du
 
 
 def init_S5SSM(
@@ -454,7 +395,6 @@ def init_S5SSM(
         dt_max,
         conj_sym,
         clip_eigs,
-        separate_dbc,
         log_a,
         stablessm_a,
         input_dependent,
@@ -466,13 +406,12 @@ def init_S5SSM(
     Convenience function that will be used to initialize the SSM.
     Same arguments as defined in S5SSM above.
     """
-    return partial(S5SSM,
+    return partial(S7,
                    C_init=C_init,
                    dt_min=dt_min,
                    dt_max=dt_max,
                    conj_sym=conj_sym,
                    clip_eigs=clip_eigs,
-                   separate_dbc=separate_dbc,
                    log_a=log_a,
                    input_dependent=input_dependent,
                    stablessm_a=stablessm_a,
