@@ -1,1 +1,27 @@
+# Python bytecode + caches
 *.pyc
+__pycache__/
+*.egg-info/
+
+# Claude Code artifacts — never commit (contains personal harness state)
+CLAUDE.md
+.claude/
+.claudeignore
+
+# Local editor / IDE state
+.vscode/
+.idea/
+*.swp
+
+# Hydra run outputs
+outputs/
+multirun/
+
+# Experiment artifacts (keep on scratch, not in repo)
+checkpoints/
+wandb/
+*.log
+
+# OS cruft
+.DS_Store
+Thumbs.db

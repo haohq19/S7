@@ -1,5 +1,5 @@
 # @package _global_
 
-data_dir: /media/SSD0/haohq/S7/datasets/eventdatasets # Point it to your own local eventdatasets folder
-output_dir: /media/SSD0/haohq/S7/outputs/${now:%Y-%m-%d-%H-%M-%S}
-checkpoint_dir: /media/SSD0/haohq/S7/checkpoints
+data_dir: /cluster/scratch/haihao/claude/data/dvs128
+output_dir: /cluster/scratch/haihao/claude/outputs/${now:%Y-%m-%d-%H-%M-%S}
+checkpoint_dir: /cluster/scratch/haihao/claude/checkpoints
