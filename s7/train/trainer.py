@@ -161,13 +161,29 @@ class Trainer:
     def _evaluate(self, loader: Iterator, prefix: str) -> Dict[str, Any]:
         sums: Dict[str, float] = defaultdict(float)
         n = 0
+        skipped = 0
         for batch in loader:
             if self.world_size > 1:
+                # Truncate the last ragged batch to a multiple of num_devices.
+                # Loaders use drop_last=False for eval so every sample is seen
+                # under single-device, but pmap can't ingest a ragged leading
+                # axis. Skipped samples are at most (num_devices - 1) per pass
+                # and are accumulated into ``skipped`` for the final log line.
+                bsz = batch[0].shape[0]
+                rest = (bsz // self.world_size) * self.world_size
+                if rest == 0:
+                    skipped += bsz
+                    continue
+                if rest != bsz:
+                    skipped += bsz - rest
+                    batch = tuple(x[:rest] for x in batch)
                 batch = _reshape_batch(batch, self.world_size)
             self.state, m = self.eval_step(self.state, batch)
             for k, v in m.items():
                 sums[k] += float(jnp.mean(v))
             n += 1
+        if skipped and self.world_size > 1:
+            print(f"[{prefix}] dropped {skipped} ragged tail samples for pmap")
         return {f"{prefix} {k}": v / max(n, 1) for k, v in sums.items()}
 
     # ------------------------------------------------------------------
