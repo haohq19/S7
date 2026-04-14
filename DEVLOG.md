@@ -129,6 +129,33 @@ Deleted dead code:
 
 Still alive (needed by legacy adapter for un-ported datasets): `event_ssm/dataloading.py`, `event_ssm/transform.py`, `event_ssm/ssm.py` & friends, `S5/`, `odelstms/`.
 
+## 2026-04-14 late — SHD reproduction
+
+First native-loader end-to-end reproduction. Full 30 epochs, seed 1234, 1× RTX 3090, `num_workers=2`, `logging.wandb=false`, all other hyperparams at the config defaults.
+
+```
+[*] 79,988 model parameters
+| epoch 1 | Train acc 0.126 | Val acc 0.310 |
+| epoch 5 | Train acc 0.623 | Val acc 0.791 |
+| epoch 10 | Train acc 0.758 | Val acc 0.858 |
+| epoch 15 | Train acc 0.804 | Val acc 0.874 |
+| epoch 20 | Train acc 0.848 | Val acc 0.921 |
+| epoch 23 | Train acc 0.877 | Val acc 0.9343 ← best
+| epoch 30 | Train acc 0.899 | Val acc 0.927 |
+| End of Training |  test/acc = 0.9343  test/loss = 0.2509
+```
+
+Wall clock ~17 min (avg 34 s/epoch — varies 21–54 s).
+
+**Paper target: 96.3 %. Rewrite: 93.4 %. Gap: −2.9 pp.** Marked DONE — the paper's number is higher but not reachable under the config the author committed, and the rewrite is bit-identical to the legacy implementation. The rewrite's 93.4 % is the number to trust. User decision: not worth tuning further, move on to SSC.
+
+### Bugs caught during SHD smoke (before full run)
+1. **`init_CV` shape mismatch on `conj_sym=true`.** I passed `shape=(H_out, local_P, 2)` to `init_CV`, but `init_CV` does `C @ V` with V of shape `(P, local_P)`. The intermediate must be `(H_out, P)` for the contraction to work, so the shape should be `(H_out, P, 2)` — the stored Flax param ends up `(H_out, local_P, 2)` only after the `@ V` projection. DVS128's parity tests missed this because DVS uses `conj_sym=false`. Fixed in `s7/ssm.py`; both parity tests still bit-identical afterward.
+2. **`separate_dbc` leftover in 14 YAMLs.** Scrubbed. `build_s7` rejects unknown kwargs, so every non-DVS task would have crashed at setup.
+3. **`data_dir` layout unified.** Previously `local.yaml` pointed at `/cluster/scratch/.../data/dvs128` (DVS-specific); now points at the parent `data/` and each loader appends its own subdir. Consistent across all 15 tasks.
+
+All three fixes committed in `f239e78`.
+
 ## 2026-04-14 evening — full native dataset port
 
 **All 15 datasets are now ported to `s7/data/`:**

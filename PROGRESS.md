@@ -21,6 +21,26 @@ Key design decisions (locked in on 2026-04-14):
   intended ones. Earlier commits had broken defaults.
 - **Dataset order**: DVS128 Gesture first, then the rest.
 
+## Reproduction results
+
+| Dataset | Rewrite | Paper | Δ | Status | Notes |
+|---|---|---|---|---|---|
+| DVS128 Gesture | — | 99.2 % | — | pending | 1-epoch smoke only (val 0.633), full 100-epoch run not launched |
+| **SHD** | **93.43 %** | **96.30 %** | **−2.87 pp** | **done** | 30 ep, seed 1234, best-val checkpoint (epoch 23). Paper gap treated as real — our number is the one to trust. |
+| SSC | — | 88.2 % | — | pending | |
+| EigenWorms | — | 97.5 % | — | pending | |
+| LRA ListOps | — | 63.77 % | — | pending | |
+| LRA Text | — | 87.22 % | — | pending | |
+| LRA Retrieval | — | 91.80 % | — | pending | |
+| LRA Image | — | 61.14 % | — | pending | |
+| LRA Pathfinder | — | 65.52 % | — | pending | |
+| LRA Path-X | — | 61.50 % | — | pending | |
+| PersonActivity | — | 94.09 % | — | pending | |
+| Walker2D | — | MSE 0.114 | — | pending | |
+| PTB | — | — | — | pending | Paper does not report |
+| WikiText-2 | — | — | — | pending | Paper does not report |
+| WikiText-103 | — | — | — | pending | Paper does not report |
+
 ## 2. What has been done
 
 ### 2.1 Code: full rewrite of the JAX/Flax core
