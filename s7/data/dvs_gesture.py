@@ -96,7 +96,8 @@ def build_loaders(
     **cfg.model.ssm`` without breaking this builder.
     """
     assert time_skew > 1, "time_skew must be > 1 (it's used as the half-width of a log-uniform window)"
-    cache_dir = Path(cache_dir)
+    # Tonic creates its own "DVSGesture/" subdir under save_to.
+    cache_dir = Path(cache_dir) / "dvs128"
 
     rng = torch.Generator()
     if seed is not None:

@@ -1,5 +1,9 @@
 # @package _global_
 
-data_dir: /cluster/scratch/haihao/claude/data/dvs128
+# Root of all datasets. Each dataset loader in s7/data/ appends its own
+# subdirectory (dvs128/, shd/, long-range-arena/, eigenworms/, ...).
+data_dir: /cluster/scratch/haihao/claude/data
+
+# Hydra run artifacts (configs, logs, checkpoints, metrics). One subdir per run.
 output_dir: /cluster/scratch/haihao/claude/outputs/${now:%Y-%m-%d-%H-%M-%S}
 checkpoint_dir: /cluster/scratch/haihao/claude/checkpoints

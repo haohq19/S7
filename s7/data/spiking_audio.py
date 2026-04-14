@@ -128,7 +128,8 @@ def build_shd_loaders(
     rng = torch.Generator()
     if seed is not None:
         rng.manual_seed(seed)
-    cache_dir = str(Path(cache_dir))
+    # Tonic creates an "SHD/" subdir under save_to.
+    cache_dir = str(Path(cache_dir) / "shd")
 
     train_tf = _build_transforms(
         drop_event=drop_event, max_drop_chunk=max_drop_chunk,
@@ -189,7 +190,8 @@ def build_ssc_loaders(
     rng = torch.Generator()
     if seed is not None:
         rng.manual_seed(seed)
-    cache_dir = str(Path(cache_dir))
+    # Tonic creates an "SSC/" subdir under save_to.
+    cache_dir = str(Path(cache_dir) / "ssc")
 
     train_tf = _build_transforms(
         drop_event=drop_event, max_drop_chunk=max_drop_chunk,

@@ -9,7 +9,6 @@ model:
     clip_eigs: false #false
     input_dependent: true # New
     stablessm_a: true # New
-    separate_dbc: false # New
     log_a: false # New
     bidirectional: false #true # New
   ssm:

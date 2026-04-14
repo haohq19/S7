@@ -213,6 +213,11 @@ class S7(nn.Module):
         )
 
         # ---- C (output matrix) — selectable init scheme ------------------
+        # NOTE: for ``init_CV`` we pass the *full* state dim P (not local_P) as
+        # the intermediate shape. ``init_CV`` projects through V (shape (P, local_P)
+        # when conj_sym=True) so the stored param ends up (H_out, local_P, 2).
+        # Passing local_P here would break the ``C @ V`` shape because V has P
+        # rows, not local_P rows.
         c_local = 2 * local_P if self.bidirectional else local_P
         if self.C_init == "complex_normal":
             self.C_param = self.param(
@@ -223,16 +228,16 @@ class S7(nn.Module):
             if self.bidirectional:
                 self.C1_param = self.param(
                     "C1", lambda rng, shape: init_CV(init_fn, rng, shape, V),
-                    (self.H_out, local_P, 2),
+                    (self.H_out, self.P, 2),
                 )
                 self.C2_param = self.param(
                     "C2", lambda rng, shape: init_CV(init_fn, rng, shape, V),
-                    (self.H_out, local_P, 2),
+                    (self.H_out, self.P, 2),
                 )
             else:
                 self.C_param = self.param(
                     "C", lambda rng, shape: init_CV(init_fn, rng, shape, V),
-                    (self.H_out, local_P, 2),
+                    (self.H_out, self.P, 2),
                 )
 
         # ---- Per-state log Δ used when input_dependent=False -------------
