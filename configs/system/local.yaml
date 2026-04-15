@@ -4,6 +4,10 @@
 # subdirectory (dvs128/, shd/, long-range-arena/, eigenworms/, ...).
 data_dir: /cluster/scratch/haihao/claude/data
 
-# Hydra run artifacts (configs, logs, checkpoints, metrics). One subdir per run.
-output_dir: /cluster/scratch/haihao/claude/outputs/${now:%Y-%m-%d-%H-%M-%S}
+# Hydra run artifacts (configs, logs, checkpoints, metrics).
+# Append SLURM_JOB_ID so concurrent sbatch jobs scheduled in the same second
+# don't collide on the same output dir — flax's _remove_invalid_ckpts treats
+# checkpoints with higher step counts than the current process as "future" and
+# deletes them, which would corrupt another job's checkpoints in a shared dir.
+output_dir: /cluster/scratch/haihao/claude/outputs/${now:%Y-%m-%d-%H-%M-%S}-${oc.env:SLURM_JOB_ID,local}
 checkpoint_dir: /cluster/scratch/haihao/claude/checkpoints
