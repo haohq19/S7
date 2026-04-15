@@ -35,6 +35,11 @@ export PYTHONPATH=.
 # Let JAX grab most of each GPU (DVS128 needs this; harmless for smaller tasks).
 export XLA_PYTHON_CLIENT_MEM_FRACTION=0.95
 
+# Redirect HF datasets / transformers / hub caches to scratch — home dir is
+# only 50 GB and AAN's pre-tokenized arrow shards alone can blow past that.
+export HF_HOME=/cluster/scratch/haihao/claude/hf_cache
+export HF_DATASETS_CACHE=/cluster/scratch/haihao/claude/hf_cache/datasets
+
 echo "[slurm] node=$(hostname) job=${SLURM_JOB_ID:-?} gpus=${CUDA_VISIBLE_DEVICES:-${SLURM_JOB_GPUS:-?}}"
 nvidia-smi --query-gpu=index,name,memory.total --format=csv || true
 
