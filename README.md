@@ -84,9 +84,24 @@ reproduce the paper, that path is already set.
 
 ## Training
 
+Local / interactive:
+
 ```bash
 CUDA_VISIBLE_DEVICES=0 PYTHONPATH=. python scripts/train.py task=dvs-gesture
 ```
+
+On the Euler cluster via slurm (recommended for long runs):
+
+```bash
+sbatch scripts/slurm/train.sbatch task=spiking-speech-commands
+sbatch scripts/slurm/train.sbatch task=dvs-gesture
+sbatch scripts/slurm/train.sbatch task=shd-classification training.num_epochs=60
+```
+
+The slurm wrapper requests 2× RTX 3090 and 20 h on `gpuhe.24h` by default
+(edit the `#SBATCH` block at the top to change). Logs land in
+`/cluster/scratch/$USER/claude/slurm-logs/s7-train-<jobid>.out`. Monitor with
+`squeue -u $USER` and `tail -f /cluster/scratch/$USER/claude/slurm-logs/s7-train-<jobid>.out`.
 
 Common overrides:
 
