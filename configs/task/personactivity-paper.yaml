@@ -1,0 +1,54 @@
+# @package _global_
+# Human Activity Recognition (PersonActivity) — paper Table 11 row.
+# Depth=1 H=120 Dropout=0.04 P=64 J=32 (block_size=2) LR=9.3e-5 WD=0.019 Epochs=400 B=80
+
+task:
+  name: personactivity-classification
+
+model:
+  ssm_init:
+    C_init: lecun_normal
+    dt_min: 0.001
+    dt_max: 0.1
+    conj_sym: false
+    clip_eigs: true
+    input_dependent: true
+    stablessm_a: false
+    log_a: false
+    bidirectional: false
+  ssm:
+    discretization: zoh
+    d_model: 120
+    d_ssm: 64
+    ssm_block_size: 2
+    num_stages: 1
+    num_layers_per_stage: 1
+    dropout: 0.04
+    classification_mode: none
+    prenorm: true
+    batchnorm: true
+    bn_momentum: 0.95
+    pooling_stride: 1
+    pooling_mode: last
+    state_expansion_factor: 1
+    encoder_type: dense
+
+training:
+  num_epochs: 400
+  per_device_batch_size: 80
+  per_device_eval_batch_size: 80
+  num_workers: 2
+  cut_mix: 0.0
+  pad_unit: 2048
+  no_time_information: false
+  loss_type: cross_entropy
+
+optimizer:
+  ssm_base_lr: 9.3e-5
+  lr_factor: 2
+  warmup_epochs: 1
+  ssm_weight_decay: 0.019
+  weight_decay: 0.019
+  proj_weight_decay: 0.019
+  schedule: cosine
+  accumulation_steps: 1

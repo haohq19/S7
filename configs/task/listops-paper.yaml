@@ -1,0 +1,54 @@
+# @package _global_
+# LRA ListOps — paper Table 11 row.
+# Depth=6 H=102 Dropout=0.23 P=8 J=1 (block_size=8) LR=5.0e-6 WD=0.065 Epochs=200 B=64
+
+task:
+  name: listops-classification
+
+model:
+  ssm_init:
+    C_init: lecun_normal
+    dt_min: 0.001
+    dt_max: 0.1
+    conj_sym: false
+    clip_eigs: true
+    input_dependent: true
+    stablessm_a: true
+    log_a: false
+    bidirectional: false
+  ssm:
+    discretization: async
+    d_model: 102
+    d_ssm: 8
+    ssm_block_size: 8
+    num_stages: 1
+    num_layers_per_stage: 6
+    dropout: 0.23
+    classification_mode: pool
+    prenorm: true
+    batchnorm: true
+    bn_momentum: 0.95
+    pooling_stride: 1
+    pooling_mode: last
+    state_expansion_factor: 1
+    encoder_type: embed
+
+training:
+  num_epochs: 200
+  per_device_batch_size: 64
+  per_device_eval_batch_size: 64
+  num_workers: 2
+  cut_mix: 0.0
+  pad_unit: 2048
+  no_time_information: false
+  loss_type: cross_entropy
+
+optimizer:
+  ssm_base_lr: 5.0e-6
+  lr_factor: 3
+  warmup_epochs: 10
+  ssm_weight_decay: 0.065
+  weight_decay: 0.065
+  proj_weight_decay: 0.065
+  schedule: cosine
+  accumulation_steps: 1

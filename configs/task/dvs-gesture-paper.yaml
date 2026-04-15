@@ -1,0 +1,69 @@
+# @package _global_
+# DVS128 Gesture — paper Table 11 row.
+# Depth=6 H=32 Dropout=0.10 P=16 J=1 (block_size=16) LR=1.2e-5 WD=0 Epochs=100 B=3
+#
+# Keeps the committed dvs/small architectural choices (async discretization,
+# stablessm_a, input_dependent, bidirectional=false, etc.) and only overrides
+# what Table 11 specifies.
+
+task:
+  name: dvs-gesture-classification
+
+model:
+  ssm_init:
+    C_init: lecun_normal
+    dt_min: 0.001
+    dt_max: 0.1
+    conj_sym: false
+    clip_eigs: true
+    input_dependent: true
+    stablessm_a: false
+    log_a: false
+    bidirectional: false
+  ssm:
+    discretization: async
+    d_model: 32
+    d_ssm: 16
+    ssm_block_size: 16
+    num_stages: 1
+    num_layers_per_stage: 6
+    dropout: 0.10
+    classification_mode: timepool
+    prenorm: true
+    batchnorm: false
+    bn_momentum: 0.95
+    pooling_stride: 16
+    pooling_mode: timepool
+    state_expansion_factor: 1
+    encoder_type: embed
+
+training:
+  num_epochs: 100
+  per_device_batch_size: 3
+  per_device_eval_batch_size: 1
+  num_workers: 2
+  time_jitter: 5
+  spatial_jitter: 0.3
+  noise: 0.0
+  drop_event: 0.05
+  time_skew: 1.12
+  max_roll: 32
+  max_angle: 10
+  max_scale: 1.2
+  max_drop_chunk: 0.02
+  cut_mix: 0.4
+  pad_unit: 524288
+  slice_events: 65536
+  validate_on_test: true
+  slice_val_set: false
+  loss_type: cross_entropy
+
+optimizer:
+  ssm_base_lr: 1.2e-5
+  lr_factor: 6
+  warmup_epochs: 10
+  ssm_weight_decay: 0.0
+  weight_decay: 0.0
+  proj_weight_decay: 0.0
+  schedule: cosine
+  accumulation_steps: 4

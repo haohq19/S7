@@ -1,0 +1,54 @@
+# @package _global_
+# LRA Text (IMDB) — paper Table 11 row.
+# Depth=6 H=96 Dropout=0.31 P=4 J=1 (block_size=4) LR=3.2e-5 WD=0.021 Epochs=200 B=32
+
+task:
+  name: text-classification
+
+model:
+  ssm_init:
+    C_init: lecun_normal
+    dt_min: 0.001
+    dt_max: 0.1
+    conj_sym: false
+    clip_eigs: true
+    input_dependent: true
+    stablessm_a: true
+    log_a: false
+    bidirectional: false
+  ssm:
+    discretization: async
+    d_model: 96
+    d_ssm: 4
+    ssm_block_size: 4
+    num_stages: 1
+    num_layers_per_stage: 6
+    dropout: 0.31
+    classification_mode: pool
+    prenorm: true
+    batchnorm: true
+    bn_momentum: 0.95
+    pooling_stride: 1
+    pooling_mode: last
+    state_expansion_factor: 1
+    encoder_type: embed
+
+training:
+  num_epochs: 200
+  per_device_batch_size: 32
+  per_device_eval_batch_size: 32
+  num_workers: 2
+  cut_mix: 0.0
+  pad_unit: 4100
+  no_time_information: true
+  loss_type: cross_entropy
+
+optimizer:
+  ssm_base_lr: 3.2e-5
+  lr_factor: 3
+  warmup_epochs: 1
+  ssm_weight_decay: 0.021
+  weight_decay: 0.021
+  proj_weight_decay: 0.021
+  schedule: cosine
+  accumulation_steps: 1

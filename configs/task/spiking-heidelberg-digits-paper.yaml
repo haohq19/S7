@@ -1,0 +1,60 @@
+# @package _global_
+# SHD — paper Table 11 row.
+# Depth=6 H=48 Dropout=0.14 P=8 J=1 (block_size=8) LR=4.8e-5 WD=0.021 Epochs=30 B=32
+
+task:
+  name: shd-classification
+
+model:
+  ssm_init:
+    C_init: lecun_normal
+    dt_min: 0.004
+    dt_max: 0.1
+    conj_sym: true
+    clip_eigs: false
+    input_dependent: true
+    stablessm_a: true
+    log_a: false
+    bidirectional: false
+  ssm:
+    discretization: async
+    d_model: 48
+    d_ssm: 8
+    ssm_block_size: 8
+    num_stages: 1
+    num_layers_per_stage: 6
+    dropout: 0.14
+    classification_mode: pool
+    prenorm: true
+    batchnorm: false
+    bn_momentum: 0.95
+    pooling_stride: 8
+    pooling_mode: avgpool
+    state_expansion_factor: 1
+    encoder_type: embed
+
+training:
+  num_epochs: 30
+  per_device_batch_size: 32
+  per_device_eval_batch_size: 32
+  num_workers: 2
+  time_jitter: 1
+  spatial_jitter: 0.55
+  noise: 35
+  max_drop_chunk: 0.02
+  drop_event: 0.1
+  time_skew: 1.2
+  cut_mix: 0.3
+  pad_unit: 8192
+  validate_on_test: true
+  loss_type: cross_entropy
+
+optimizer:
+  ssm_base_lr: 4.8e-5
+  lr_factor: 10
+  warmup_epochs: 3
+  ssm_weight_decay: 0.021
+  weight_decay: 0.021
+  proj_weight_decay: 0.021
+  schedule: cosine
+  accumulation_steps: 1

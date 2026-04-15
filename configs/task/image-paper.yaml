@@ -1,0 +1,54 @@
+# @package _global_
+# LRA Image (CIFAR10-gray) — paper Table 11 row.
+# Depth=2 H=60 Dropout=0.15 P=24 J=12 (block_size=2) LR=1.0e-5 WD=0.015 Epochs=200 B=280
+
+task:
+  name: image-classification
+
+model:
+  ssm_init:
+    C_init: lecun_normal
+    dt_min: 0.001
+    dt_max: 0.1
+    conj_sym: false
+    clip_eigs: true
+    input_dependent: true
+    stablessm_a: false
+    log_a: false
+    bidirectional: false
+  ssm:
+    discretization: zoh
+    d_model: 60
+    d_ssm: 24
+    ssm_block_size: 2
+    num_stages: 1
+    num_layers_per_stage: 2
+    dropout: 0.15
+    classification_mode: pool
+    prenorm: true
+    batchnorm: true
+    bn_momentum: 0.95
+    pooling_stride: 1
+    pooling_mode: last
+    state_expansion_factor: 1
+    encoder_type: embed
+
+training:
+  num_epochs: 200
+  per_device_batch_size: 280
+  per_device_eval_batch_size: 280
+  num_workers: 2
+  cut_mix: 0.0
+  pad_unit: 1024
+  no_time_information: false
+  loss_type: cross_entropy
+
+optimizer:
+  ssm_base_lr: 1.0e-5
+  lr_factor: 3
+  warmup_epochs: 1
+  ssm_weight_decay: 0.015
+  weight_decay: 0.015
+  proj_weight_decay: 0.015
+  schedule: cosine
+  accumulation_steps: 1

@@ -1,0 +1,54 @@
+# @package _global_
+# LRA Retrieval (AAN) — paper Table 11 row.
+# Depth=3 H=80 Dropout=0.10 P=10 J=2 (block_size=5) LR=2.8e-5 WD=0.045 Epochs=90 B=18
+
+task:
+  name: retrieval-classification
+
+model:
+  ssm_init:
+    C_init: lecun_normal
+    dt_min: 0.001
+    dt_max: 0.1
+    conj_sym: false
+    clip_eigs: true
+    input_dependent: true
+    stablessm_a: true
+    log_a: false
+    bidirectional: false
+  ssm:
+    discretization: async
+    d_model: 80
+    d_ssm: 10
+    ssm_block_size: 5
+    num_stages: 1
+    num_layers_per_stage: 3
+    dropout: 0.10
+    classification_mode: pool
+    prenorm: true
+    batchnorm: true
+    bn_momentum: 0.95
+    pooling_stride: 1
+    pooling_mode: last
+    state_expansion_factor: 1
+    encoder_type: embed
+
+training:
+  num_epochs: 90
+  per_device_batch_size: 18
+  per_device_eval_batch_size: 18
+  num_workers: 2
+  cut_mix: 0.0
+  pad_unit: 4000
+  no_time_information: true
+  loss_type: cross_entropy
+
+optimizer:
+  ssm_base_lr: 2.8e-5
+  lr_factor: 3
+  warmup_epochs: 1
+  ssm_weight_decay: 0.045
+  weight_decay: 0.045
+  proj_weight_decay: 0.045
+  schedule: cosine
+  accumulation_steps: 1
