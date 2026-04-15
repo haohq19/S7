@@ -17,7 +17,7 @@ model:
     conj_sym: false
     clip_eigs: true
     input_dependent: true
-    stablessm_a: false
+    stablessm_a: true  # enable stable A reparam; paper §A.4 advocates this
     log_a: false
     bidirectional: false
   ssm:
