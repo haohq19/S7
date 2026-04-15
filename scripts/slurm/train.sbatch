@@ -19,7 +19,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --gpus=rtx_3090:2
-#SBATCH --mem-per-cpu=16G
+#SBATCH --mem-per-cpu=24G
 #SBATCH --output=/cluster/scratch/haihao/claude/slurm-logs/%x-%j.out
 
 set -euo pipefail

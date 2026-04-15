@@ -188,13 +188,28 @@ class Trainer:
 
     # ------------------------------------------------------------------
     def _is_better(self, new_metrics: Dict[str, Any]) -> bool:
+        """Return True if ``new_metrics`` is an improvement over the current
+        ``best_eval_metrics``. Loss / perplexity are lower-is-better, accuracy
+        is higher-is-better; if the summary metric is NaN (e.g. MSE tasks that
+        set accuracy=NaN) fall through to the loss comparison.
+        """
         if not self.best_eval_metrics:
             return True
-        is_max = "perplexity" not in self.summary_metric
-        for key in (self.summary_metric, "Performance/Validation accuracy", "Performance/Validation loss"):
-            if key in new_metrics and key in self.best_eval_metrics:
-                a, b = new_metrics[key], self.best_eval_metrics[key]
-                return a > b if is_max else a < b
+        # ``(metric, is_larger_better)`` pairs in priority order.
+        candidates = [
+            (self.summary_metric, "loss" not in self.summary_metric and "perplexity" not in self.summary_metric),
+            ("Performance/Validation accuracy", True),
+            ("Performance/Validation loss", False),
+        ]
+        import math
+        for key, larger_is_better in candidates:
+            if key not in new_metrics or key not in self.best_eval_metrics:
+                continue
+            a = float(new_metrics[key])
+            b = float(self.best_eval_metrics[key])
+            if math.isnan(a) or math.isnan(b):
+                continue  # try next metric
+            return a > b if larger_is_better else a < b
         return False
 
     # ------------------------------------------------------------------

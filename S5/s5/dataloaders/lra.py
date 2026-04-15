@@ -535,14 +535,16 @@ class PathFinder(ImageResolutionSequenceDataset):
         self.dataset_val = _compile_convert(self.dataset_val, tag='val')
         self.dataset_test = _compile_convert(self.dataset_test, tag='test')
 
-        # Cache.
-        #self.cache_dir = Path("/data/storage/tsoydan/data/long-range-arena/pathfinder")
-        #print(self._cache_dir_name)
-        #cache_path = Path("/data/storage/tsoydan/data/long-range-arena/pathfinder32float/pathfinder-resolution-32.pt")
-        if self.tokenize:
-            cache_path = Path(f"/data/storage/tsoydan/data/long-range-arena/pathfinder/pathfinder-resolution-{self.resolution}.pt")
+        # Cache. Originally hardcoded to /data/storage/tsoydan/... (the
+        # original author's machine). Route to the cache_dir the caller passed
+        # in, falling back to a tmpdir if none is set.
+        if self.cache_dir is not None:
+            cache_root = Path(self.cache_dir).expanduser()
         else:
-            cache_path = Path(f"/data/storage/tsoydan/data/long-range-arena/pathfinder32float/pathfinder-resolution-{self.resolution}.pt")
+            import tempfile
+            cache_root = Path(tempfile.gettempdir()) / "s7_pathfinder_cache"
+        subdir = "pathfinder" if self.tokenize else "pathfinder32float"
+        cache_path = cache_root / subdir / f"pathfinder-resolution-{self.resolution}.pt"
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         #self.cache_dir / (self._cache_dir_name + '.pt')
         #print(cache_path)
