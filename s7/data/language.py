@@ -157,7 +157,7 @@ def _lm_loaders(
     if seed is not None:
         g.manual_seed(seed)
 
-    root = Path(cache_dir).parent / data_subdir
+    root = Path(cache_dir) / data_subdir
     corpus = Corpus(root, root)
 
     train = _LMDataset(corpus.train, seq_len)

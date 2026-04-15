@@ -117,7 +117,7 @@ def build_listops_loaders(
     **_unused,
 ):
     rng = _rng_from_seed(seed)
-    data_dir = Path(cache_dir).parent / "long-range-arena/lra_release/lra_release/listops-1000"
+    data_dir = Path(cache_dir) / "long-range-arena/lra_release/lra_release/listops-1000"
     cache = data_dir / "l_max-2048-append_bos-False-append_eos-True"
     tgt_tf = OneHotLabels(num_classes=10)
 
@@ -189,7 +189,7 @@ def build_text_loaders(
     **_unused,
 ):
     rng = _rng_from_seed(seed)
-    data_dir = Path(cache_dir).parent / "long-range-arena/text/"
+    data_dir = Path(cache_dir) / "long-range-arena/text/"
     tgt_tf = OneHotLabels(num_classes=2)
 
     train = _IMDBDataset(data_dir, data_dir, "train", tgt_tf)
@@ -260,7 +260,7 @@ def build_retrieval_loaders(
     **_unused,
 ):
     rng = _rng_from_seed(seed)
-    data_dir = Path(cache_dir).parent / "long-range-arena/retrieval/"
+    data_dir = Path(cache_dir) / "long-range-arena/retrieval/"
     tgt_tf = OneHotLabels(num_classes=2)
 
     train = _AANDataset(data_dir, data_dir, "train", tgt_tf)
@@ -328,7 +328,7 @@ def build_image_loaders(
     **_unused,
 ):
     rng = _rng_from_seed(seed)
-    data_dir = Path(cache_dir).parent / "long-range-arena/image/"
+    data_dir = Path(cache_dir) / "long-range-arena/image/"
     tgt_tf = OneHotLabels(num_classes=10)
 
     train = _ImageDataset(data_dir, data_dir, "train", tgt_tf)
@@ -395,7 +395,7 @@ def _build_pathfinder_family(
     no_time_information: bool,
 ):
     rng = _rng_from_seed(seed)
-    data_dir = Path(cache_dir).parent / "long-range-arena/pathfinder/"
+    data_dir = Path(cache_dir) / "long-range-arena/pathfinder/"
     tgt_tf = OneHotLabels(num_classes=2)
 
     train = _PathFinderDataset(data_dir, data_dir, "train", resolution, tgt_tf)

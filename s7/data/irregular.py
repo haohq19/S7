@@ -89,7 +89,7 @@ def build_eigenworms_loaders(
     **_unused,
 ):
     rng = _rng(seed)
-    data_dir = Path(cache_dir).parent / "eigenworms/processed"
+    data_dir = Path(cache_dir) / "eigenworms/processed"
     tgt_tf = OneHotLabels(num_classes=5)
 
     train = _EigenWormsDataset(data_dir, "train", tgt_tf)
@@ -157,7 +157,7 @@ def build_personactivity_loaders(
     **_unused,
 ):
     rng = _rng(seed)
-    data_path = Path(cache_dir).parent / "person/ConfLongDemo_JSI.txt"
+    data_path = Path(cache_dir) / "person/ConfLongDemo_JSI.txt"
     tgt_tf = OneHotLabels(num_classes=7)
 
     train = _PersonActivityDataset(data_path, "train", tgt_tf)
@@ -223,7 +223,7 @@ def build_walker_loaders(
     **_unused,
 ):
     rng = _rng(seed)
-    data_dir = Path(cache_dir).parent / "walker/"
+    data_dir = Path(cache_dir) / "walker/"
 
     train = _WalkerDataset(data_dir, "train")
     val = _WalkerDataset(data_dir, "test")
