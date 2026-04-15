@@ -25,18 +25,18 @@ Key design decisions (locked in on 2026-04-14):
 
 | Dataset | Rewrite | Paper | Δ | Status | Notes |
 |---|---|---|---|---|---|
-| DVS128 Gesture | — | 99.2 % | — | pending | 1-epoch smoke only (val 0.633), full 100-epoch run not launched |
-| **SHD** | **93.43 %** | **96.30 %** | **−2.87 pp** | **done** | 30 ep, seed 1234, best-val checkpoint (epoch 23). Paper gap treated as real — our number is the one to trust. |
-| SSC | — | 88.2 % | — | pending | |
-| EigenWorms | — | 97.5 % | — | pending | |
-| LRA ListOps | — | 63.77 % | — | pending | |
-| LRA Text | — | 87.22 % | — | pending | |
-| LRA Retrieval | — | 91.80 % | — | pending | |
-| LRA Image | — | 61.14 % | — | pending | |
-| LRA Pathfinder | — | 65.52 % | — | pending | |
-| LRA Path-X | — | 61.50 % | — | pending | |
-| PersonActivity | — | 94.09 % | — | pending | |
-| Walker2D | — | MSE 0.114 | — | pending | |
+| DVS128 Gesture | — | 99.2 % | — | running | sbatch 63547983 (~3 h in of expected ~7 h). 1-epoch dev-node smoke gave val 0.633. |
+| **SHD** | **93.43 %** | 96.30 % | −2.87 pp | **done** | 30 ep, seed 1234, best-val ckpt (epoch 23). Paper gap treated as real. |
+| SSC | — | 88.2 % | — | running | sbatch 63547606 (~3 h in of expected ~13 h). 1-epoch smoke val 0.189 (35-class, random 0.029). |
+| **EigenWorms** | **81.58 %** | 97.5 % | −15.92 pp | done | 200 ep, sbatch 63564563. Real ~16 pp shortfall — small model (~3K params), config from legacy. Worth investigating but likely needs more careful hyperparam tuning vs paper. |
+| LRA ListOps | — | 63.77 % | — | smoked + queued | 1-epoch dev-node smoke val 0.174 (random 0.10). sbatch resubmitted 63572171 with isolated output dir. |
+| LRA Text | — | 87.22 % | — | smoke passed | 1-epoch dev-node smoke val 0.583 (random 0.50, binary IMDB). sbatch not yet submitted. |
+| LRA Retrieval | — | 91.80 % | — | blocked | AAN tsvs are huge (8.5 GB train); S5 dataset cache build hit Lustre file-count quota mid-rm. Will retry after rm finishes. |
+| LRA Image | — | 61.14 % | — | smoke passed | 1-epoch dev-node smoke val 0.358 (random 0.10, 10-class CIFAR-grayscale). Not yet submitted. |
+| LRA Pathfinder | — | 65.52 % | — | **unreachable** | OpenDataLab tarball does not contain `pathfinder32/` (only 64/128/256). Can't run without separately preprocessed data. |
+| LRA Path-X | — | 61.50 % | — | **unreachable** | Pathfinder128 was 600 K image files. Deleted to free Lustre file-count quota. To attempt Path-X, would need to re-extract just `pathfinder128/` from the tarball and accept the file-count budget. |
+| **Walker2D** | **loss 0.5305** | MSE 0.114 | ~9× off | done | 100 ep, sbatch 63569289. optax `l2_loss = 0.5*MSE` so equivalent ≈ 1.06. Real shortfall — needs investigation. |
+| PersonActivity | — | 94.09 % | — | running (re) | First sbatch 63564987 hit quota mid-rm; resubmitted as 63572174. 1-epoch dev-node smoke val 0.802. |
 | PTB | — | — | — | **skipped** | Config uses `bidirectional: true` which trivializes next-token LM (the SSM at position i sees input[i+1] = target[i] and learns the identity map, collapsing loss to ~0). Paper does not report numbers either. Not a rewrite bug — the legacy config is degenerate for this task. |
 | WikiText-2 | — | — | — | **skipped** | Same `bidirectional: true` config issue. Paper does not report. |
 | WikiText-103 | — | — | — | **skipped** | Same. Not worth the ~500 MB staging for a degenerate metric. |
