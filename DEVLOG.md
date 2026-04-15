@@ -129,6 +129,17 @@ Deleted dead code:
 
 Still alive (needed by legacy adapter for un-ported datasets): `event_ssm/dataloading.py`, `event_ssm/transform.py`, `event_ssm/ssm.py` & friends, `S5/`, `odelstms/`.
 
+## 2026-04-15 — language datasets skipped (PTB / WikiText-{2,103})
+
+After PTB and WikiText-2 smoke + sbatch runs, found that both configs set `model.ssm_init.bidirectional: true`. For a next-token prediction task a bidirectional SSM at position i directly sees input[i+1] in its receptive field, and input[i+1] IS target[i]. The model therefore learns an identity copy and collapses loss to near-zero:
+
+- PTB 50-epoch sbatch: `test/loss = 0.6544, test/acc = 0.5616` (perplexity ≈ 1.9 — physically impossible for word-level PTB)
+- WT2 1-epoch smoke: `val/loss = 0.84, val/acc = 0.57` (same pattern)
+
+Parity tests are still bit-identical to the legacy code, so this is not a rewrite bug — it's a degenerate config in the original repo. The paper does not report PTB or WikiText numbers so there's no target to reach anyway. Skipping all three (PTB, WikiText-2, WikiText-103) from the reproduction plan; documented in PROGRESS.md's results table.
+
+WikiText-2 sbatch also crashed separately on `FailedPreconditionError: ocdbt.process_0/d; Directory not empty` — an unrelated orbax / flax `_remove_invalid_ckpts` GC race on Lustre. Fixed in `736e937` by raising `flax.training.checkpoints.save_checkpoint(keep=...)` from 1 to 10 000, so the `io.rmtree` GC path is effectively never triggered for a single reproduction run.
+
 ## 2026-04-14 late — SHD reproduction
 
 First native-loader end-to-end reproduction. Full 30 epochs, seed 1234, 1× RTX 3090, `num_workers=2`, `logging.wandb=false`, all other hyperparams at the config defaults.

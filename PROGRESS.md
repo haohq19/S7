@@ -37,9 +37,9 @@ Key design decisions (locked in on 2026-04-14):
 | LRA Path-X | — | 61.50 % | — | pending | |
 | PersonActivity | — | 94.09 % | — | pending | |
 | Walker2D | — | MSE 0.114 | — | pending | |
-| PTB | — | — | — | pending | Paper does not report |
-| WikiText-2 | — | — | — | pending | Paper does not report |
-| WikiText-103 | — | — | — | pending | Paper does not report |
+| PTB | — | — | — | **skipped** | Config uses `bidirectional: true` which trivializes next-token LM (the SSM at position i sees input[i+1] = target[i] and learns the identity map, collapsing loss to ~0). Paper does not report numbers either. Not a rewrite bug — the legacy config is degenerate for this task. |
+| WikiText-2 | — | — | — | **skipped** | Same `bidirectional: true` config issue. Paper does not report. |
+| WikiText-103 | — | — | — | **skipped** | Same. Not worth the ~500 MB staging for a degenerate metric. |
 
 ## 2. What has been done
 
