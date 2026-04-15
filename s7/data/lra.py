@@ -117,7 +117,8 @@ def build_listops_loaders(
     **_unused,
 ):
     rng = _rng_from_seed(seed)
-    data_dir = Path(cache_dir) / "long-range-arena/lra_release/lra_release/listops-1000"
+    # OpenDataLab tarball layout: lra_release/listops-1000 (single-nested)
+    data_dir = Path(cache_dir) / "long-range-arena/lra_release/listops-1000"
     cache = data_dir / "l_max-2048-append_bos-False-append_eos-True"
     tgt_tf = OneHotLabels(num_classes=10)
 
@@ -260,7 +261,8 @@ def build_retrieval_loaders(
     **_unused,
 ):
     rng = _rng_from_seed(seed)
-    data_dir = Path(cache_dir) / "long-range-arena/retrieval/"
+    # OpenDataLab LRA tarball: AAN tsvs live at lra_release/lra_release/tsv_data
+    data_dir = Path(cache_dir) / "long-range-arena/lra_release/lra_release/tsv_data"
     tgt_tf = OneHotLabels(num_classes=2)
 
     train = _AANDataset(data_dir, data_dir, "train", tgt_tf)
@@ -395,7 +397,9 @@ def _build_pathfinder_family(
     no_time_information: bool,
 ):
     rng = _rng_from_seed(seed)
-    data_dir = Path(cache_dir) / "long-range-arena/pathfinder/"
+    # PathFinder data_dir must point at the per-resolution subdir directly:
+    # the S5 PathFinder dataloader does ``glob("*.npy")`` under data_dir/<diff_level>/metadata
+    data_dir = Path(cache_dir) / f"long-range-arena/lra_release/lra_release/pathfinder{resolution}"
     tgt_tf = OneHotLabels(num_classes=2)
 
     train = _PathFinderDataset(data_dir, data_dir, "train", resolution, tgt_tf)
