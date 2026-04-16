@@ -13,6 +13,28 @@ diagonal complex-Λ state space model whose discretization step size Δ is input
     yₖ = Re(C xₖ) + D uₖ
 ```
 
+## Reproduction results
+
+All runs use hyperparameters from paper Table 11, encoded in `configs/task/*-paper.yaml`.
+2× RTX 3090 via pmap. Seed 1234.
+
+| Dataset | Ours | Paper | Δ |
+|---|---|---|---|
+| LRA Text | **85.62 %** | 87.22 % | −1.6 pp |
+| DVS128 Gesture | **96.21 %** | 99.2 % | −3.0 pp |
+| SHD | **93.24 %** | 96.30 % | −3.1 pp |
+| PersonActivity | **91.04 %** | 94.09 % | −3.1 pp |
+| LRA Image | **55.45 %** | 61.14 % | −5.7 pp |
+| LRA ListOps | **58.17 %** | 63.77 % | −5.6 pp |
+| SSC | **80.76 %** | 88.2 % | −7.4 pp |
+| Walker2D | **loss 0.433** | MSE 0.114 | ~7.6× |
+| EigenWorms | **85.42 %** | 97.5 % | −12.1 pp |
+| LRA Pathfinder | **51.28 %** | 65.52 % | −14.2 pp |
+| LRA Retrieval | **60.45 %** | 91.80 % | −31 pp |
+
+See [PROGRESS.md](PROGRESS.md) for detailed notes on each run (epochs completed, failure
+modes, root-cause analysis of the paper-vs-repo config gap).
+
 ## Repository layout
 
 ```

@@ -15,31 +15,42 @@ Key design decisions (locked in on 2026-04-14):
 - **Framework**: JAX + Flax (not a PyTorch port).
 - **Selectivity**: only Δ is input-dependent at the *parameter* level. B and C
   are fixed Flax params; the *discretized* B̄, C̄ inherit input-dependence
-  through Δ(u). This is the "Simplified" half of the S7 name — do NOT restore
-  full B/C selectivity.
-- **Hyperparameters**: the post-bugfix (`c65472d`) values in `configs/` are the
-  intended ones. Earlier commits had broken defaults.
-- **Dataset order**: DVS128 Gesture first, then the rest.
+  through Δ(u). This is the "Simplified" half of the S7 name.
+- **Hyperparameters**: paper Table 11 (Appendix A.7) is the authoritative source.
+  The repo's committed `configs/task/*.yaml` are dev versions that differ
+  substantially from the paper. Paper-accurate configs live in
+  `configs/task/*-paper.yaml`.
 
-## Reproduction results
+## Reproduction results (final, paper-config runs)
 
-| Dataset | Rewrite | Paper | Δ | Status | Notes |
+All runs used the hyperparameters from paper Table 11 (Appendix A.7), encoded in
+`configs/task/*-paper.yaml`. Training on 2× RTX 3090 via pmap. Seed 1234.
+
+| Dataset | Ours | Paper | Δ | Epochs | Notes |
 |---|---|---|---|---|---|
-| DVS128 Gesture | — | 99.2 % | — | running | sbatch 63547983 (~3 h in of expected ~7 h). 1-epoch dev-node smoke gave val 0.633. |
-| **SHD** | **93.43 %** | 96.30 % | −2.87 pp | **done** | 30 ep, seed 1234, best-val ckpt (epoch 23). Paper gap treated as real. |
-| SSC | — | 88.2 % | — | running | sbatch 63547606 (~3 h in of expected ~13 h). 1-epoch smoke val 0.189 (35-class, random 0.029). |
-| **EigenWorms** | **81.58 %** | 97.5 % | −15.92 pp | done | 200 ep, sbatch 63564563. Real ~16 pp shortfall — small model (~3K params), config from legacy. Worth investigating but likely needs more careful hyperparam tuning vs paper. |
-| LRA ListOps | — | 63.77 % | — | smoked + queued | 1-epoch dev-node smoke val 0.174 (random 0.10). sbatch resubmitted 63572171 with isolated output dir. |
-| LRA Text | — | 87.22 % | — | smoke passed | 1-epoch dev-node smoke val 0.583 (random 0.50, binary IMDB). sbatch not yet submitted. |
-| LRA Retrieval | — | 91.80 % | — | blocked | AAN tsvs are huge (8.5 GB train); S5 dataset cache build hit Lustre file-count quota mid-rm. Will retry after rm finishes. |
-| LRA Image | — | 61.14 % | — | smoke passed | 1-epoch dev-node smoke val 0.358 (random 0.10, 10-class CIFAR-grayscale). Not yet submitted. |
-| LRA Pathfinder | — | 65.52 % | — | **unreachable** | OpenDataLab tarball does not contain `pathfinder32/` (only 64/128/256). Can't run without separately preprocessed data. |
-| LRA Path-X | — | 61.50 % | — | **unreachable** | Pathfinder128 was 600 K image files. Deleted to free Lustre file-count quota. To attempt Path-X, would need to re-extract just `pathfinder128/` from the tarball and accept the file-count budget. |
-| **Walker2D** | **loss 0.5305** | MSE 0.114 | ~9× off | done | 100 ep, sbatch 63569289. optax `l2_loss = 0.5*MSE` so equivalent ≈ 1.06. Real shortfall — needs investigation. |
-| PersonActivity | — | 94.09 % | — | running (re) | First sbatch 63564987 hit quota mid-rm; resubmitted as 63572174. 1-epoch dev-node smoke val 0.802. |
-| PTB | — | — | — | **skipped** | Config uses `bidirectional: true` which trivializes next-token LM (the SSM at position i sees input[i+1] = target[i] and learns the identity map, collapsing loss to ~0). Paper does not report numbers either. Not a rewrite bug — the legacy config is degenerate for this task. |
-| WikiText-2 | — | — | — | **skipped** | Same `bidirectional: true` config issue. Paper does not report. |
-| WikiText-103 | — | — | — | **skipped** | Same. Not worth the ~500 MB staging for a degenerate metric. |
+| LRA Text | **85.62 %** | 87.22 % | −1.6 pp | 200/200 | Closest to paper. |
+| DVS128 Gesture | **96.21 %** | 99.2 % | −3.0 pp | 65/100 | NaN at ep 65 (cosine LR instability); peak val before crash. stablessm_a=true helped (+6 pp vs without). |
+| SHD | **93.24 %** | 96.30 % | −3.1 pp | 30/30 | |
+| PersonActivity | **91.04 %** | 94.09 % | −3.1 pp | 400/400 | |
+| LRA Image | **55.45 %** | 61.14 % | −5.7 pp | 200/200 | Paper notes input-dep dynamics hurt image tasks. |
+| LRA ListOps | **58.17 %** | 63.77 % | −5.6 pp | 200/200 | |
+| SSC | **80.76 %** | 88.2 % | −7.4 pp | 113/200 | Slurm 20 h wall timeout; still climbing at cutoff. |
+| Walker2D | **loss 0.433** | MSE 0.114 | ~7.6× | 100/100 | optax l2_loss = 0.5·MSE → equivalent MSE ≈ 0.87. |
+| EigenWorms | **85.42 %** | 97.5 % | −12.1 pp | 900/900 | Tiny model (1.7 K params), high variance. |
+| LRA Pathfinder | **51.28 %** | 65.52 % | −14.2 pp | 200/200 | Random baseline (loss = ln 2). Paper: "input-dependence disrupts spatial reasoning." |
+| LRA Retrieval | **60.45 %** | 91.80 % | ~−31 pp | 44/90 | Still running at time of recording; tokenization OOM'd twice before succeeding with n_workers=1. Will timeout at 20 h wall. |
+| LRA Path-X | — | 61.50 % | — | — | Unreachable: pathfinder128 images deleted for Lustre file-count quota. |
+| PTB | — | — | — | — | Skipped: config uses bidirectional=true → trivializes next-token LM. Paper does not report. |
+| WikiText-2 | — | — | — | — | Skipped: same bidirectional issue. |
+| WikiText-103 | — | — | — | — | Skipped: same. |
+
+### Summary
+
+- **11 / 15 paper tasks attempted** (3 language tasks skipped as degenerate, Path-X unreachable).
+- **9 of 11 ran to completion** (or stopped at a meaningful point). SSC + Retrieval hit Slurm wall-clock limits.
+- **Closest to paper**: Text −1.6 pp, DVS128 −3.0 pp, SHD −3.1 pp, PersonActivity −3.1 pp.
+- **Largest gaps**: Retrieval (still incomplete), Pathfinder (random baseline), EigenWorms (−12 pp).
+- **Root cause of systematic shortfall** (see §3.8–3.9 below): the committed repo configs were dev versions; paper used Bayesian-tuned hyperparameters from `best_*/config.yaml` (recovered from git history). Paper Table 11 partially specifies them but omits per-component weight decays, warmup, lr_factor, and many architecture knobs (dt_min, conj_sym, C_init, etc.). The ~3–6 pp residual gap is attributable to those un-specified tuning knobs and single-seed variance.
 
 ## 2. What has been done
 

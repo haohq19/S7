@@ -220,14 +220,14 @@ class _AANDataset(Dataset):
         self.split = split
         self.target_transform = target_transform
         # S5's AAN class defaults to ``n_workers=40`` for the HF ``datasets``
-        # map() parallelism. On Euler's memcg-limited jobs that blows through
-        # the memory allowance during tokenization of the 8.5 GB train tsv.
-        # Cap at 4 to keep the build within budget; it takes a few extra
-        # minutes but fits.
+        # map() parallelism. Each worker holds a shard of the 8.5 GB train tsv
+        # in memory; multiplied out this blows well past any reasonable
+        # memcg budget. ``n_workers=1`` is single-process map; slower but
+        # the only value that fits under ~64 GB on Euler.
         self._aan = AAN(
             _name_="aan", data_dir=data_dir, cache_dir=cache_dir,
             train=(split == "train"),
-            n_workers=4,
+            n_workers=1,
         )
         self._aan.prepare_data()
         self._aan.setup(stage=split)
