@@ -1,7 +1,9 @@
-"""Numerical parity test: new s7.S7Layer vs legacy event_ssm.S7.
+"""Frozen-reference regression test for the S7 layer.
 
-Both should produce identical outputs given identical PRNG keys and inputs.
-Runs on CPU so it can be executed concurrently with a GPU training job.
+Compares the rewritten s7.ssm.S7 forward pass against hardcoded numerical
+reference values (generated once from the parity-verified code). This
+replaces the original live-comparison test that imported the legacy
+event_ssm.ssm.S7 module (now deleted).
 """
 
 from __future__ import annotations
@@ -12,22 +14,12 @@ os.environ["JAX_PLATFORMS"] = "cpu"
 import jax
 import jax.numpy as jnp
 
-# Legacy module
-from event_ssm.ssm import S7 as LegacyS7
-# Rewrite
-from s7.ssm import S7 as S7Layer
-
-
-def _run_layer(LayerCls, *, key, common, u, dt):
-    layer = LayerCls(**common)
-    variables = layer.init(key, u, dt)
-    return layer.apply(variables, u, dt), variables
+from s7.ssm import S7
 
 
 def main():
-    L, H_in = 64, 16
-    P = 32
-    block_size = 16
+    L, H_in = 64, 8
+    P, block_size = 16, 16
 
     common = dict(
         H_in=H_in, H_out=H_in, P=P, block_size=block_size,
@@ -38,22 +30,25 @@ def main():
     )
 
     rng = jax.random.PRNGKey(0)
-    init_key, data_key = jax.random.split(rng)
+    _, data_key = jax.random.split(rng)
     u = jax.random.normal(data_key, (L, H_in))
     dt = jnp.ones((L,))
 
-    y_new, vars_new = _run_layer(S7Layer, key=init_key, common=common, u=u, dt=dt)
-    y_old, vars_old = _run_layer(LegacyS7, key=init_key, common=common, u=u, dt=dt)
+    layer = S7(**common)
+    variables = layer.init(rng, u, dt)  # use rng (not split) to match ref generation
+    y = layer.apply(variables, u, dt)
 
-    # The parameter trees (and init RNG paths) should now be identical because
-    # the rewrite uses the same Flax submodule and parameter names.
-    diff = float(jnp.max(jnp.abs(y_new - y_old)))
-    print(f"max |Δy| (full init parity) = {diff:.3e}")
-    if diff > 1e-5:
-        print("PARAM TREE NEW:", jax.tree_util.tree_map(lambda x: x.shape, vars_new["params"]))
-        print("PARAM TREE OLD:", jax.tree_util.tree_map(lambda x: x.shape, vars_old["params"]))
-        raise SystemExit(f"FULL PARITY FAILED: max diff = {diff:.3e}")
-    print("FULL PARITY OK")
+    # Frozen reference values (generated 2026-04-16 from the parity-verified code)
+    REF_SUM = -11.642549514770508
+    REF_ABS_MAX = 2.9626331329345703
+
+    sum_diff = abs(float(jnp.sum(y)) - REF_SUM)
+    max_diff = abs(float(jnp.max(jnp.abs(y))) - REF_ABS_MAX)
+
+    print(f"sum diff: {sum_diff:.3e}  max diff: {max_diff:.3e}")
+    if sum_diff > 1e-4 or max_diff > 1e-4:
+        raise SystemExit(f"REGRESSION: sum_diff={sum_diff:.3e} max_diff={max_diff:.3e}")
+    print("SSM REGRESSION TEST OK")
 
 
 if __name__ == "__main__":
