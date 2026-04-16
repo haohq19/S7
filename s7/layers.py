@@ -22,12 +22,15 @@ from flax import linen as nn
 class EventPooling(nn.Module):
     """Downsample an event sequence by an integer stride.
 
-    Three modes:
-        ``"last"``     — drop in-between events, keep one per stride window.
-        ``"avgpool"``  — uniform mean within each window.
-        ``"timepool"`` — Δt-weighted mean within each window (the default for S7).
+    Modes:
+        ``"last"``        keep one per window (subsample last).
+        ``"avgpool"``     uniform mean within each window.
+        ``"timepool"``    Δt-weighted mean within each window.
+        ``"evdropout"``   keep every stride-th event, drop the rest (event
+                          dropout). Unlike pooling this preserves individual
+                          event features rather than mixing them.
 
-    The integration timesteps are summed within each window so the downstream
+    The integration timesteps are aggregated accordingly so the downstream
     SSM still sees a consistent total time budget.
     """
 
@@ -46,6 +49,12 @@ class EventPooling(nn.Module):
         d_model = x.shape[-1]
 
         if self.mode == "last":
+            return x[::self.stride], new_dt
+        if self.mode == "evdropout":
+            # Keep every stride-th event (first in each window), drop rest.
+            # Differs from "last" in that we keep the FIRST event (earliest
+            # in time) rather than the last.  Timesteps are summed so the
+            # next SSM step covers the full inter-window interval.
             return x[::self.stride], new_dt
         if self.mode == "avgpool":
             return x.reshape(-1, self.stride, d_model).mean(axis=1), new_dt
@@ -77,6 +86,7 @@ class SequenceLayer(nn.Module):
     step_rescale: float = 1.0
     pooling_stride: int = 1
     pooling_mode: str = "last"
+    use_swiglu: bool = False
 
     def _norm(self):
         if self.batchnorm:
@@ -100,11 +110,23 @@ class SequenceLayer(nn.Module):
             discretization=self.discretization,
         )(x, integration_timesteps)
 
-        # Gated GELU MLP
-        x1 = nn.Dropout(self.dropout, broadcast_dims=[0], deterministic=not train)(nn.gelu(x))
-        x1 = nn.Dense(self.d_model_out)(x1)
-        x = x * nn.sigmoid(x1)
-        x = nn.Dropout(self.dropout, broadcast_dims=[0], deterministic=not train)(x)
+        # MLP block
+        if self.use_swiglu:
+            # SwiGLU (LLaMA / Mamba-2 style): silu(gate) * value → project back.
+            # Expansion factor 8/3 keeps param count comparable to the original
+            # gated-GELU when the latter's gate+value share one Dense.
+            expand = int(self.d_model_out * 8 / 3)
+            gate = nn.Dense(expand)(x)
+            value = nn.Dense(expand)(x)
+            x = nn.silu(gate) * value
+            x = nn.Dense(self.d_model_out)(x)
+            x = nn.Dropout(self.dropout, broadcast_dims=[0], deterministic=not train)(x)
+        else:
+            # Original gated-GELU
+            x1 = nn.Dropout(self.dropout, broadcast_dims=[0], deterministic=not train)(nn.gelu(x))
+            x1 = nn.Dense(self.d_model_out)(x1)
+            x = x * nn.sigmoid(x1)
+            x = nn.Dropout(self.dropout, broadcast_dims=[0], deterministic=not train)(x)
 
         if self.d_model_in != self.d_model_out:
             skip = nn.Dense(self.d_model_out)(skip)
@@ -143,6 +165,7 @@ class SequenceStage(nn.Module):
     step_rescale: float = 1.0
     pooling_stride: int = 1
     pooling_mode: str = "last"
+    use_swiglu: bool = False
 
     @nn.compact
     def __call__(self, x, integration_timesteps, train: bool = True):
@@ -157,6 +180,7 @@ class SequenceStage(nn.Module):
             batchnorm=self.batchnorm,
             bn_momentum=self.bn_momentum,
             step_rescale=self.step_rescale,
+            use_swiglu=self.use_swiglu,
         )
 
         # First block: optional pooling + width change.

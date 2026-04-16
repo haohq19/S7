@@ -65,7 +65,8 @@ def build_optimizer(opt_config):
     Expected ``opt_config`` keys:
         ssm_lr, lr_factor, total_steps, warmup_steps, schedule,
         ssm_weight_decay, weight_decay, proj_weight_decay,
-        accumulation_steps  (optional)
+        accumulation_steps  (optional),
+        grad_clip  (optional, default 0 = off; >0 enables global norm clipping)
     """
     lr_fn = partial(
         build_learning_rate_fn,
@@ -77,7 +78,13 @@ def build_optimizer(opt_config):
     base_lr = opt_config.ssm_lr
     other_lr = base_lr * opt_config.lr_factor
 
-    tx = optax.multi_transform(
+    # Optional gradient clipping (applied BEFORE the per-group AdamW).
+    grad_clip = float(opt_config.get("grad_clip", 0))
+    pre_transforms = []
+    if grad_clip > 0:
+        pre_transforms.append(optax.clip_by_global_norm(grad_clip))
+
+    multi_tx = optax.multi_transform(
         {
             "ssm": optax.inject_hyperparams(
                 partial(optax.adamw, b1=0.9, b2=0.999, weight_decay=opt_config.ssm_weight_decay),
@@ -93,6 +100,8 @@ def build_optimizer(opt_config):
         },
         _label_tree,
     )
+
+    tx = optax.chain(*pre_transforms, multi_tx) if pre_transforms else multi_tx
 
     if opt_config.get("accumulation_steps", 0):
         tx = optax.MultiSteps(tx, every_k_schedule=opt_config.accumulation_steps)

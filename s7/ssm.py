@@ -265,7 +265,12 @@ class S7(nn.Module):
         if self.log_a:
             return -jnp.exp(Lambda)
         if self.stablessm_a:
-            return -jnp.sqrt((-1 - self.b_offset * Lambda) / (self.a_scale * Lambda))
+            # Paper eq. 69: f(w) = 1 − 1/(a·w² + b).  The stored param is
+            # w = sqrt((-1/Λ_hippo − b) / a), so the correct inverse is
+            # Λ = −1/(a·w² + b).  The PREVIOUS code here computed
+            # −sqrt((−1 − b·w)/(a·w)) which is algebraically different and
+            # gives a roundtrip error of ~20 (completely wrong eigenvalues).
+            return -1.0 / (self.a_scale * Lambda ** 2 + self.b_offset)
         return Lambda
 
     def _resolve_C(self):

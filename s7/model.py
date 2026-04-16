@@ -60,6 +60,7 @@ class StackedEncoder(nn.Module):
     pooling_mode: str = "last"
     state_expansion_factor: int = 1
     encoder_type: str = "embed"
+    use_swiglu: bool = False
 
     def setup(self):
         if self.encoder_type == "embed":
@@ -94,6 +95,7 @@ class StackedEncoder(nn.Module):
                     step_rescale=self.step_rescale,
                     pooling_stride=self.pooling_stride,
                     pooling_mode=self.pooling_mode,
+                    use_swiglu=self.use_swiglu,
                 )
             )
             d_ssm = self.state_expansion_factor * d_ssm
@@ -137,6 +139,7 @@ class ClassificationModel(nn.Module):
     pooling_mode: str = "last"
     state_expansion_factor: int = 1
     encoder_type: str = "embed"
+    use_swiglu: bool = False
 
     def setup(self):
         self.encoder = StackedEncoder(
@@ -234,6 +237,7 @@ class RetrievalModel(nn.Module):
     pooling_mode: str = "last"
     state_expansion_factor: int = 1
     encoder_type: str = "embed"
+    use_swiglu: bool = False
 
     def setup(self):
         BatchEncoder = nn.vmap(
